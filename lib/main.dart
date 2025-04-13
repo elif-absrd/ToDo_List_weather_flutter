@@ -1,11 +1,12 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert'; // For encoding and decoding JSON
+import 'package:flutter/material.dart'; // Flutter UI framework
+import 'package:geolocator/geolocator.dart'; // To get current location
+import 'package:http/http.dart' as http; // For making HTTP requests
+import 'package:shared_preferences/shared_preferences.dart'; // For saving data locally
 
-void main() => runApp(const ToDoWeatherApp());
+void main() => runApp(const ToDoWeatherApp()); // Entry point of the app
 
+// Root widget of the app
 class ToDoWeatherApp extends StatelessWidget {
   const ToDoWeatherApp({super.key});
 
@@ -13,15 +14,16 @@ class ToDoWeatherApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'To-Do Weather App',
-      theme: ThemeData.dark().copyWith(
+      theme: ThemeData.dark().copyWith( // Using dark theme
         scaffoldBackgroundColor: const Color(0xFF1E1E1E),
         primaryColor: Colors.tealAccent,
       ),
-      home: const ToDoHomePage(),
+      home: const ToDoHomePage(), // Main screen of the app
     );
   }
 }
 
+// Task model to store each to-do item
 class Task {
   String title;
   String description;
@@ -35,7 +37,7 @@ class Task {
     required this.dueDate,
   });
 
-  // Convert Task to JSON-compatible map
+  // Convert Task to a Map to save it in JSON
   Map<String, dynamic> toJson() => {
     'title': title,
     'description': description,
@@ -43,7 +45,7 @@ class Task {
     'dueDate': dueDate.toIso8601String(),
   };
 
-  // Create Task from JSON
+  // Create a Task object from JSON data
   factory Task.fromJson(Map<String, dynamic> json) => Task(
     title: json['title'],
     description: json['description'],
@@ -52,6 +54,7 @@ class Task {
   );
 }
 
+// Main home page with weather and to-do list
 class ToDoHomePage extends StatefulWidget {
   const ToDoHomePage({super.key});
 
@@ -60,20 +63,21 @@ class ToDoHomePage extends StatefulWidget {
 }
 
 class ToDoHomePageState extends State<ToDoHomePage> {
-  int _selectedIndex = 0;
-  late List<Task> _tasks;
-  DateTime _selectedDate = DateTime.now();
-  String _location = '--';
-  String _temperature = '--';
-  String _condition = '--';
+  int _selectedIndex = 0; // To toggle between all and high-priority tasks
+  late List<Task> _tasks; // List of all tasks
+  DateTime _selectedDate = DateTime.now(); // Selected date for filtering tasks
+  String _location = '--'; // Location info for weather
+  String _temperature = '--'; // Temperature
+  String _condition = '--'; // Weather condition
 
   @override
   void initState() {
     super.initState();
-    _loadTasks(); // Load tasks from storage on startup
-    _fetchWeather();
+    _loadTasks(); // Load saved tasks from local storage
+    _fetchWeather(); // Fetch weather data using current location
   }
 
+  // Load tasks from SharedPreferences
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final String? tasksString = prefs.getString('tasks');
@@ -83,6 +87,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
         _tasks = decodedTasks.map((json) => Task.fromJson(json)).toList();
       });
     } else {
+      // Default tasks if no saved data found
       setState(() {
         _tasks = [
           Task(title: "Buy groceries", dueDate: DateTime.now()),
@@ -94,6 +99,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
     }
   }
 
+  // Save tasks to local storage
   Future<void> _saveTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final String tasksString = jsonEncode(_tasks.map((task) => task.toJson()).toList());
@@ -101,6 +107,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
     print('Tasks saved: $tasksString');
   }
 
+  // Fetch current weather using location
   Future<void> _fetchWeather() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -120,7 +127,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
         desiredAccuracy: LocationAccuracy.low,
       );
 
-      String apiKey = "536ab46832a54647857185649250704";
+      String apiKey = "536ab46832a54647857185649250704"; // Your weather API key
       String url = "http://api.weatherapi.com/v1/current.json?key=$apiKey&q=${position.latitude},${position.longitude}";
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
@@ -146,12 +153,14 @@ class ToDoHomePageState extends State<ToDoHomePage> {
     }
   }
 
+  // Handle bottom navigation tap
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
+  // Open date picker dialog
   Future<void> _selectDate(BuildContext context, DateTime initialDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -180,6 +189,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
     }
   }
 
+  // Show bottom sheet to add/edit task
   void _showTaskDialog({Task? task, int? index}) {
     final titleController = TextEditingController(text: task?.title ?? '');
     final descController = TextEditingController(text: task?.description ?? '');
@@ -236,7 +246,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
                     trailing: IconButton(
                       icon: const Icon(Icons.calendar_today, color: Colors.tealAccent),
                       onPressed: () => _selectDate(context, selectedDate).then((_) {
-                        setState(() {}); // Refresh the UI with the new date
+                        setState(() {}); // Refresh UI
                       }),
                     ),
                   ),
@@ -269,13 +279,12 @@ class ToDoHomePageState extends State<ToDoHomePage> {
                                 );
                               }
                             });
-                            _saveTasks(); // Save tasks after update
+                            _saveTasks(); // Save after adding/editing
                             Navigator.pop(context);
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Please enter a title')),
                             );
-                            print('Title is empty');
                           }
                         },
                         child: const Text("Save"),
@@ -291,6 +300,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
     );
   }
 
+  // Check if two dates are the same (ignores time)
   bool isSameDay(DateTime? date1, DateTime? date2) {
     if (date1 == null || date2 == null) return false;
     return date1.year == date2.year &&
@@ -298,21 +308,23 @@ class ToDoHomePageState extends State<ToDoHomePage> {
            date1.day == date2.day;
   }
 
+  // Get all tasks for the selected date
   List<Task> _getTasksForDate(DateTime date) {
     return _tasks.where((task) => isSameDay(task.dueDate, date)).toList();
   }
 
+  // Build task card UI
   Widget _buildTaskCard(int index) {
     final task = _tasks[index];
 
     return GestureDetector(
       onLongPress: () {
         setState(() {
-          task.isHighPriority = !task.isHighPriority;
-          _saveTasks(); // Save tasks after priority change
+          task.isHighPriority = !task.isHighPriority; // Toggle priority
+          _saveTasks(); // Save after update
         });
       },
-      onTap: () => _showTaskDialog(task: task, index: index),
+      onTap: () => _showTaskDialog(task: task, index: index), // Edit task
       child: Card(
         color: task.isHighPriority ? Colors.red[700] : Colors.grey[900],
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -323,8 +335,8 @@ class ToDoHomePageState extends State<ToDoHomePage> {
             onChanged: (value) {
               if (value == true) {
                 setState(() {
-                  _tasks.removeAt(index);
-                  _saveTasks(); // Save tasks after deletion
+                  _tasks.removeAt(index); // Delete task
+                  _saveTasks();
                 });
               }
             },
@@ -367,11 +379,12 @@ class ToDoHomePageState extends State<ToDoHomePage> {
     );
   }
 
+  // Build the main UI
   @override
   Widget build(BuildContext context) {
     final filteredTasks = _selectedIndex == 0
-        ? _getTasksForDate(_selectedDate)
-        : _getTasksForDate(_selectedDate).where((task) => task.isHighPriority).toList();
+        ? _getTasksForDate(_selectedDate) // All tasks
+        : _getTasksForDate(_selectedDate).where((task) => task.isHighPriority).toList(); // High-priority only
 
     return Scaffold(
       appBar: AppBar(
@@ -380,13 +393,14 @@ class ToDoHomePageState extends State<ToDoHomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_today),
-            onPressed: () => _selectDate(context, _selectedDate),
+            onPressed: () => _selectDate(context, _selectedDate), // Open calendar
             color: Colors.tealAccent,
           ),
         ],
       ),
       body: Column(
         children: [
+          // Weather display card
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
@@ -409,6 +423,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
               ],
             ),
           ),
+          // Show selected date
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
@@ -416,6 +431,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
               style: const TextStyle(color: Colors.white60, fontSize: 16),
             ),
           ),
+          // Show list of tasks
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 70),
@@ -427,6 +443,7 @@ class ToDoHomePageState extends State<ToDoHomePage> {
           ),
         ],
       ),
+      // Add new task button
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.tealAccent,
         onPressed: () => _showTaskDialog(),
